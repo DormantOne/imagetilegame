@@ -32,6 +32,12 @@
             border-bottom: 1px solid #ccc;
             padding: 2px 0;
         }
+
+        button {
+            margin-top: 20px;
+            font-size: 1.2em;
+            padding: 10px 20px;
+        }
     </style>
 </head>
 <body>
@@ -39,7 +45,8 @@
     <div>Credits: <span id="creditsDisplay">40</span></div>
     <input type="file" id="imageUpload" accept="image/*">
     <button id="startGameButton">Start Game</button>
-    <canvas id="imageCanvas"></canvas>
+    <button id="openGovernorButton">Open Governor</button>
+    <div id="qrCode" class="qr-code"></div>
     <div id="logs"></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
@@ -52,6 +59,7 @@
         let db, auth, callNumber, img, blocks = [], blockSize = 50;
         let userCredits = 40, maxTilesPerRequest = 10;
         const startGameButton = document.getElementById('startGameButton');
+        const openGovernorButton = document.getElementById('openGovernorButton');
         const imageUpload = document.getElementById('imageUpload');
         const canvas = document.getElementById('imageCanvas');
         const ctx = canvas.getContext('2d');
@@ -80,20 +88,6 @@
                 logToHTML('Failed to fetch Firebase config: ' + error);
                 return null;
             }
-        }
-
-        async function initializeFirebase() {
-            const config = await getFirebaseConfig();
-            if (!config) {
-                logToHTML("Error: Firebase config is null");
-                return false;
-            }
-
-            logToHTML("Firebase config fetched: " + JSON.stringify(config));
-            firebase.initializeApp(config);
-            db = firebase.firestore();
-            auth = firebase.auth();
-            return true;
         }
 
         function prepareCanvas() {
@@ -143,13 +137,16 @@
         });
 
         startGameButton.addEventListener('click', async () => {
-            const firebaseInitialized = await initializeFirebase();
-            if (!firebaseInitialized) {
+            const config = await getFirebaseConfig();
+            if (!config) {
+                logToHTML("Error: Firebase config is null");
                 return;
             }
 
-            callNumber = Math.floor(Math.random() * 900000) + 100000;
-            logToHTML(`Game started! Call Number: ${callNumber}`);
+            logToHTML("Firebase config fetched: " + JSON.stringify(config));
+            firebase.initializeApp(config);
+            db = firebase.firestore();
+            auth = firebase.auth();
 
             auth.signInAnonymously().catch(error => {
                 logToHTML('Failed to sign in anonymously: ' + error.message);
@@ -170,7 +167,18 @@
                         }
                     });
 
+                    callNumber = Math.floor(Math.random() * 900000) + 100000;
+                    logToHTML(`Game started! Call Number: ${callNumber}`);
+
+                    const qrElement = document.getElementById('qrCode');
+                    const qr = new QRious({
+                        element: qrElement,
+                        size: 200,
+                        value: `https://dormantone.github.io/imagetilegame/controller.html?callNumber=${callNumber}`
+                    });
+
                     fetchGameData();
+                    updateCreditsDisplay(40); // Initial display
 
                     setInterval(fetchGameData, 5000);
 
@@ -178,6 +186,19 @@
                     governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
                 }
             });
+        });
+
+        openGovernorButton.addEventListener('click', () => {
+            if (!callNumber) {
+                logToHTML('Start the game first to generate a call number.');
+                return;
+            }
+            const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
+            if (governorWindow && !governorWindow.closed) {
+                governorWindow.focus();
+            } else {
+                governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
+            }
         });
 
         async function fetchGameData() {
