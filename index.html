@@ -69,7 +69,7 @@
 
         async function getFirebaseConfig() {
             try {
-                const response = await fetch('https://us-central1-universalcontroller-b4610.cloudfunctions.net/getFirebaseConfig', {
+                const response = await fetch('https://us-central1-imagetilegame.cloudfunctions.net/getFirebaseConfig', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: '{}'
@@ -129,7 +129,7 @@
             const qr = new QRious({
                 element: qrElement,
                 size: 200,
-                value: `https://yourdomain.com/controller.html?callNumber=${callNumber}`
+                value: `https://dormantone.github.io/imagetilegame/controller.html?callNumber=${callNumber}`
             });
 
             const config = await getFirebaseConfig();
@@ -154,7 +154,7 @@
 
                     setInterval(fetchGameData, 5000);
 
-                    const governorUrl = `https://yourdomain.com/controller-governor.html?callNumber=${callNumber}`;
+                    const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
                     governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
                 }
             });
@@ -165,7 +165,7 @@
                 logToHTML('Start the game first to generate a call number.');
                 return;
             }
-            const governorUrl = `https://yourdomain.com/controller-governor.html?callNumber=${callNumber}`;
+            const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
             if (governorWindow && !governorWindow.closed) {
                 governorWindow.focus();
             } else {
