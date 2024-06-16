@@ -82,6 +82,20 @@
             }
         }
 
+        async function initializeFirebase() {
+            const config = await getFirebaseConfig();
+            if (!config) {
+                logToHTML("Error: Firebase config is null");
+                return false;
+            }
+
+            logToHTML("Firebase config fetched: " + JSON.stringify(config));
+            firebase.initializeApp(config);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            return true;
+        }
+
         function prepareCanvas() {
             canvas.width = img.width;
             canvas.height = img.height;
@@ -129,19 +143,13 @@
         });
 
         startGameButton.addEventListener('click', async () => {
-            callNumber = Math.floor(Math.random() * 900000) + 100000;
-            logToHTML(`Game started! Call Number: ${callNumber}`);
-
-            const config = await getFirebaseConfig();
-            if (!config) {
-                logToHTML("Error: Firebase config is null");
+            const firebaseInitialized = await initializeFirebase();
+            if (!firebaseInitialized) {
                 return;
             }
 
-            logToHTML("Firebase config fetched: " + JSON.stringify(config));
-            firebase.initializeApp(config);
-            db = firebase.firestore();
-            auth = firebase.auth();
+            callNumber = Math.floor(Math.random() * 900000) + 100000;
+            logToHTML(`Game started! Call Number: ${callNumber}`);
 
             auth.signInAnonymously().catch(error => {
                 logToHTML('Failed to sign in anonymously: ' + error.message);
@@ -157,11 +165,12 @@
                     userRef.get().then(doc => {
                         if (!doc.exists) {
                             userRef.set({ credits: 40 });
+                        } else {
+                            updateCreditsDisplay(doc.data().credits);
                         }
                     });
 
                     fetchGameData();
-                    updateCreditsDisplay(40); // Initial display
 
                     setInterval(fetchGameData, 5000);
 
