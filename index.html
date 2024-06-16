@@ -36,9 +36,9 @@
 </head>
 <body>
     <h2>Image Puzzle Reveal Game</h2>
+    <div>Credits: <span id="creditsDisplay">40</span></div>
     <input type="file" id="imageUpload" accept="image/*">
     <button id="startGameButton">Start Game</button>
-    <button id="openGovernorButton">Open Governor</button>
     <canvas id="imageCanvas"></canvas>
     <div id="logs"></div>
 
@@ -52,11 +52,11 @@
         let db, auth, callNumber, img, blocks = [], blockSize = 50;
         let userCredits = 40, maxTilesPerRequest = 10;
         const startGameButton = document.getElementById('startGameButton');
-        const openGovernorButton = document.getElementById('openGovernorButton');
         const imageUpload = document.getElementById('imageUpload');
         const canvas = document.getElementById('imageCanvas');
         const ctx = canvas.getContext('2d');
         let governorWindow;
+        let userId;
 
         function logToHTML(message) {
             const logContainer = document.getElementById('logs');
@@ -87,6 +87,7 @@
             canvas.height = img.height;
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            logToHTML('Canvas prepared with dimensions: ' + canvas.width + 'x' + canvas.height);
         }
 
         function prepareBlocks() {
@@ -96,6 +97,7 @@
                     blocks.push({ x, y, placed: false });
                 }
             }
+            logToHTML('Blocks prepared: ' + blocks.length + ' blocks created.');
         }
 
         function drawBlocks() {
@@ -105,6 +107,11 @@
                     ctx.drawImage(img, block.x, block.y, blockSize, blockSize, block.x, block.y, blockSize, blockSize);
                 }
             });
+            logToHTML('Blocks drawn.');
+        }
+
+        function updateCreditsDisplay(credits) {
+            document.getElementById('creditsDisplay').textContent = credits;
         }
 
         imageUpload.addEventListener('change', function (e) {
@@ -112,6 +119,7 @@
             reader.onload = function (event) {
                 img = new Image();
                 img.onload = function () {
+                    logToHTML('Image loaded with dimensions: ' + img.width + 'x' + img.height);
                     prepareCanvas();
                     prepareBlocks();
                 }
@@ -123,14 +131,6 @@
         startGameButton.addEventListener('click', async () => {
             callNumber = Math.floor(Math.random() * 900000) + 100000;
             logToHTML(`Game started! Call Number: ${callNumber}`);
-
-            const qrElement = document.createElement('div');
-            document.body.appendChild(qrElement);
-            const qr = new QRious({
-                element: qrElement,
-                size: 200,
-                value: `https://dormantone.github.io/imagetilegame/controller.html?callNumber=${callNumber}`
-            });
 
             const config = await getFirebaseConfig();
             if (!config) {
@@ -149,8 +149,19 @@
 
             auth.onAuthStateChanged(user => {
                 if (user) {
+                    userId = user.uid;
                     logToHTML("User signed in anonymously: " + user.uid);
+
+                    // Initialize user with 40 credits if they are new
+                    const userRef = db.collection('users').doc(userId);
+                    userRef.get().then(doc => {
+                        if (!doc.exists) {
+                            userRef.set({ credits: 40 });
+                        }
+                    });
+
                     fetchGameData();
+                    updateCreditsDisplay(40); // Initial display
 
                     setInterval(fetchGameData, 5000);
 
@@ -158,19 +169,6 @@
                     governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
                 }
             });
-        });
-
-        openGovernorButton.addEventListener('click', () => {
-            if (!callNumber) {
-                logToHTML('Start the game first to generate a call number.');
-                return;
-            }
-            const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
-            if (governorWindow && !governorWindow.closed) {
-                governorWindow.focus();
-            } else {
-                governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
-            }
         });
 
         async function fetchGameData() {
