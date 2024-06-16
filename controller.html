@@ -14,11 +14,13 @@
             margin: 10px 0;
         }
 
+        .control-container input[type="text"],
         .control-container input[type="number"] {
-            width: 60px;
+            width: 80px;
         }
 
-        .control-container button {
+        .control-container button,
+        .control-container input[type="submit"] {
             width: 100px;
             height: 40px;
             margin: 5px;
@@ -39,18 +41,17 @@
             <input type="number" id="tileCount" min="1" max="10" value="1">
             <button id="revealTilesButton">Reveal</button>
         </div>
-        <div class="control-container">
-            <button id="suggestAnswerButton">Suggest Answer</button>
-        </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-functions.js"></script>
+    <!-- Firebase setup -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-functions-compat.js"></script>
 
     <script>
         let db, auth, callNumber, userId, userName;
+        const revealTilesButton = document.getElementById('revealTilesButton');
 
         async function getFirebaseConfig() {
             const response = await fetch('https://us-central1-imagetilegame.cloudfunctions.net/getFirebaseConfig', {
@@ -67,64 +68,18 @@
         }
 
         async function revealTiles(tileCount) {
-            if (!db) {
-                console.error('Database not initialized.');
-                return;
-            }
-            try {
-                const userRef = db.collection('users').doc(userId);
-                const userDoc = await userRef.get();
-                if (userDoc.exists) {
-                    const userCredits = userDoc.data().credits;
-                    if (userCredits >= tileCount) {
-                        const gameStateRef = db.collection('gameState').doc('currentGame');
-                        await db.runTransaction(async (transaction) => {
-                            const newCredits = userCredits - tileCount;
-                            transaction.update(userRef, { credits: newCredits });
-                            const gameStateDoc = await transaction.get(gameStateRef);
-                            if (!gameStateDoc.exists) {
-                                transaction.set(gameStateRef, { blocks: [] });
-                            }
-                            let blocks = gameStateDoc.data().blocks;
-                            for (let i = 0; i < tileCount; i++) {
-                                const unplacedBlocks = blocks.filter(block => !block.placed);
-                                if (unplacedBlocks.length > 0) {
-                                    const randomBlock = unplacedBlocks[Math.floor(Math.random() * unplacedBlocks.length)];
-                                    randomBlock.placed = true;
-                                    blocks = blocks.map(block => block.x === randomBlock.x && block.y === randomBlock.y ? randomBlock : block);
-                                }
-                            }
-                            transaction.update(gameStateRef, { blocks: blocks });
-                        });
-                        console.log(`Revealed ${tileCount} tiles.`);
-                    } else {
-                        console.error('Not enough credits.');
-                    }
-                }
-            } catch (error) {
-                console.error("Error revealing tiles: ", error);
-            }
-        }
+            const controlData = {
+                userName,
+                userId,
+                callNumber,
+                control: 'revealTiles',
+                value: tileCount,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
-        async function suggestAnswer() {
-            const guess = prompt('Enter your guess for the room number:');
-            const correctAnswer = 'correctRoomNumber'; // Dynamically set this value
-            if (guess === correctAnswer) {
-                alert('Correct! You win!');
-            } else {
-                alert('Wrong guess.');
-                await updateUserCredits(userId, -5);
-            }
-        }
-
-        async function updateUserCredits(userId, change) {
-            const userRef = db.collection('users').doc(userId);
-            await db.runTransaction(async (transaction) => {
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists) throw 'User does not exist!';
-                const newCredits = userDoc.data().credits + change;
-                transaction.update(userRef, { credits: newCredits });
-            });
+            await db.collection('actions').add(controlData);
+            revealTilesButton.disabled = true;
+            setTimeout(() => { revealTilesButton.disabled = false; }, 5000);
         }
 
         getFirebaseConfig().then(config => {
@@ -143,24 +98,13 @@
                     userId = user.uid;
                     userName = prompt("Enter your name:");
                     document.getElementById('userName').textContent = `User: ${userName}`;
-
-                    db.collection('actions').where('callNumber', '==', callNumber)
-                      .orderBy('timestamp', 'asc')
-                      .onSnapshot(snapshot => {
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            console.log(`Document data: ${JSON.stringify(data)}`);
-                        });
-                    });
-
-                    document.getElementById('revealTilesButton').addEventListener('click', async () => {
+                    
+                    revealTilesButton.addEventListener('click', async () => {
                         const tileCount = parseInt(document.getElementById('tileCount').value);
                         if (tileCount > 0 && tileCount <= maxTilesPerRequest) {
                             await revealTiles(tileCount);
                         }
                     });
-
-                    document.getElementById('suggestAnswerButton').addEventListener('click', suggestAnswer);
                 }
             });
         }).catch(error => {
