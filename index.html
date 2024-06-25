@@ -217,7 +217,9 @@
                         snapshot.forEach(doc => {
                             const data = doc.data();
                             logToHTML(`Document data: ${JSON.stringify(data)}`);
-                            updateBoard(data);
+                            if (data.control === 'revealTiles') {
+                                revealTiles(data.value);
+                            }
                         });
                     } else {
                         logToHTML(`No documents found for call number ${callNumber}`);
@@ -227,14 +229,16 @@
                 }
             }
 
-            function updateBoard(data) {
-                data.blocks.forEach(block => {
-                    const foundBlock = blocks.find(b => b.x === block.x && b.y === block.y);
-                    if (foundBlock) {
-                        foundBlock.placed = true;
+            function revealTiles(tileCount) {
+                const unplacedBlocks = blocks.filter(block => !block.placed);
+                if (unplacedBlocks.length > 0) {
+                    for (let i = 0; i < tileCount; i++) {
+                        const randomBlock = unplacedBlocks[Math.floor(Math.random() * unplacedBlocks.length)];
+                        randomBlock.placed = true;
+                        blocks = blocks.map(block => block.x === randomBlock.x && block.y === randomBlock.y ? randomBlock : block);
                     }
-                });
-                drawBlocks();
+                    drawBlocks();
+                }
             }
         });
     </script>
