@@ -179,10 +179,8 @@
                             value: `https://dormantone.github.io/imagetilegame/controller.html?callNumber=${callNumber}`
                         });
 
-                        fetchGameData();
+                        listenForGameData();
                         updateCreditsDisplay(40); // Initial display
-
-                        setInterval(fetchGameData, 5000);
 
                         const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
                         governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
@@ -203,34 +201,29 @@
                 }
             });
 
-            async function fetchGameData() {
+            function listenForGameData() {
                 if (!db) {
                     logToHTML('Database not initialized.');
                     return;
                 }
-                try {
-                    logToHTML('Fetching game data from Firestore...');
-                    const query = db.collection('actions').where('callNumber', '==', callNumber.toString()).orderBy('timestamp', 'asc');
-                    logToHTML(`Executing query for callNumber: ${callNumber}`);
-                    const snapshot = await query.get();
-                    if (!snapshot.empty) {
-                        logToHTML(`Fetched ${snapshot.size} documents.`);
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            logToHTML(`Document data: ${JSON.stringify(data)}`);
-                            if (doc.id !== lastProcessedActionId) {
-                                if (data.control === 'revealTiles') {
-                                    revealTiles(data.value);
-                                    lastProcessedActionId = doc.id;
+
+                db.collection('actions')
+                    .where('callNumber', '==', callNumber.toString())
+                    .orderBy('timestamp', 'asc')
+                    .onSnapshot(snapshot => {
+                        snapshot.docChanges().forEach(change => {
+                            if (change.type === 'added') {
+                                const data = change.doc.data();
+                                logToHTML(`Document data: ${JSON.stringify(data)}`);
+                                if (change.doc.id !== lastProcessedActionId) {
+                                    if (data.control === 'revealTiles') {
+                                        revealTiles(data.value);
+                                        lastProcessedActionId = change.doc.id;
+                                    }
                                 }
                             }
                         });
-                    } else {
-                        logToHTML(`No documents found for call number ${callNumber}`);
-                    }
-                } catch (error) {
-                    logToHTML("Error fetching game data: " + error);
-                }
+                    });
             }
 
             function revealTiles(tileCount) {
