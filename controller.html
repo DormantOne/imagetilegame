@@ -34,22 +34,8 @@
 <body>
     <h2>Universal Controller</h2>
     <div id="controller">
-        <p id="userName"></p>
+        <p id="userNameDisplay"></p>
         <p id="callNumberDisplay"></p>
-        <div class="control-container">
-            <label for="choice">Choice:</label>
-            <select id="choice">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-                <option value="6">6</option>
-                <option value="7">7</option>
-                <option value="8">8</option>
-            </select>
-        </div>
         <div class="control-container">
             <label for="tileCount">Tiles to Reveal:</label>
             <input type="number" id="tileCount" min="1" max="10" value="1">
@@ -86,6 +72,14 @@
             function getQueryParam(param) {
                 const urlParams = new URLSearchParams(window.location.search);
                 return urlParams.get(param);
+            }
+
+            function saveUserName(name) {
+                localStorage.setItem('userName', name);
+            }
+
+            function getUserName() {
+                return localStorage.getItem('userName') || prompt("Enter your name:");
             }
 
             async function revealTiles(tileCount) {
@@ -151,8 +145,9 @@
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         userId = user.uid;
-                        userName = prompt("Enter your name:");
-                        document.getElementById('userName').textContent = `User: ${userName}`;
+                        userName = getUserName();
+                        saveUserName(userName);
+                        document.getElementById('userNameDisplay').textContent = `User: ${userName}`;
                         
                         revealTilesButton.addEventListener('click', async () => {
                             const tileCount = parseInt(document.getElementById('tileCount').value);
@@ -174,4 +169,3 @@
     </script>
 </body>
 </html>
- 
