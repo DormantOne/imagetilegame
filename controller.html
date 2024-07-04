@@ -55,9 +55,13 @@
             <input type="number" id="tileCount" min="1" max="10" value="1">
             <button id="revealTilesButton">Reveal</button>
         </div>
+        <div class="control-container">
+            <label for="guess">Guess Room Number:</label>
+            <input type="text" id="guess">
+            <button id="guessButton">Guess</button>
+        </div>
     </div>
 
-    <!-- Firebase setup -->
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
@@ -66,8 +70,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let db, auth, callNumber, userId, userName;
-            const maxTilesPerRequest = 10; // Define the maxTilesPerRequest variable
+            const maxTilesPerRequest = 10;
             const revealTilesButton = document.getElementById('revealTilesButton');
+            const guessButton = document.getElementById('guessButton');
 
             async function getFirebaseConfig() {
                 const response = await fetch('https://us-central1-imagetilegame.cloudfunctions.net/getFirebaseConfig', {
@@ -98,6 +103,40 @@
                 setTimeout(() => { revealTilesButton.disabled = false; }, 5000);
             }
 
+            async function makeGuess(guess) {
+                const controlData = {
+                    userName,
+                    userId,
+                    callNumber,
+                    control: 'guess',
+                    value: letterPairToNumber(guess),
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection('actions').add(controlData);
+                guessButton.disabled = true;
+                setTimeout(() => { guessButton.disabled = false; }, 5000);
+            }
+
+            function letterPairToNumber(pair) {
+                const letterMapping = {
+                    'AB': 1,
+                    'CD': 2,
+                    'EF': 3,
+                    'GH': 4,
+                    'IJ': 5,
+                    'KL': 6,
+                    'MN': 7,
+                    'OP': 8,
+                    'QR': 9,
+                    'ST': 10,
+                    'UV': 11,
+                    'WX': 12,
+                    'YZ': 13
+                };
+                return letterMapping[pair.toUpperCase()] || 0;
+            }
+
             getFirebaseConfig().then(config => {
                 firebase.initializeApp(config);
                 db = firebase.firestore();
@@ -120,6 +159,11 @@
                             if (tileCount > 0 && tileCount <= maxTilesPerRequest) {
                                 await revealTiles(tileCount);
                             }
+                        });
+
+                        guessButton.addEventListener('click', async () => {
+                            const guess = document.getElementById('guess').value;
+                            await makeGuess(guess);
                         });
                     }
                 });
