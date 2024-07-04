@@ -66,6 +66,7 @@
             const ctx = canvas.getContext('2d');
             let governorWindow;
             let userId;
+            let lastProcessedUserId = null;
 
             function logToHTML(message) {
                 const logContainer = document.getElementById('logs');
@@ -217,8 +218,9 @@
                         snapshot.forEach(doc => {
                             const data = doc.data();
                             logToHTML(`Document data: ${JSON.stringify(data)}`);
-                            if (data.control === 'revealTiles') {
+                            if (data.control === 'revealTiles' && data.userId !== lastProcessedUserId) {
                                 revealTiles(data.value);
+                                lastProcessedUserId = data.userId;
                             }
                         });
                     } else {
@@ -244,4 +246,3 @@
     </script>
 </body>
 </html>
- 
