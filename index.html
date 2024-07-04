@@ -200,9 +200,9 @@
                         const doc = await userRef.get();
                         if (!doc.exists) {
                             await userRef.set({ credits: 200, turn: users.length === 0 });
-                            users.push({ userId, userName: prompt("Enter your name:") });
+                            users.push({ userId });
                         } else {
-                            users.push({ userId, userName: prompt("Enter your name:") });
+                            users.push({ userId });
                             updateCreditsDisplay(doc.data().credits);
                         }
 
