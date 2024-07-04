@@ -199,6 +199,7 @@
                     }
                     const fileName = e.target.files[0].name.split('.')[0]; // Extract file name without extension
                     roomNumber = letterPairToNumber(fileName);
+                    console.log("Room number: ", roomNumber); // Debugging log
                     img.src = event.target.result;
                 }
                 reader.readAsDataURL(e.target.files[0]);
@@ -291,6 +292,7 @@
                             const data = doc.data();
                             logToHTML(`Document data: ${JSON.stringify(data)}`);
                             if (data.control === 'revealTiles') {
+                                console.log("Revealing tiles: ", data.value); // Debugging log
                                 revealTiles(data.value);
                                 updateCredits(data.userId, -data.value);
                                 switchTurn();
