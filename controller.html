@@ -66,7 +66,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let db, auth, callNumber, userId, userName;
-            const maxTilesPerRequest = 10; // Define the maxTilesPerRequest variable
+            const maxTilesPerRequest = 10;
             const revealTilesButton = document.getElementById('revealTilesButton');
 
             async function getFirebaseConfig() {
@@ -94,8 +94,26 @@
                 };
 
                 await db.collection('actions').add(controlData);
+
+                // Disable button after taking turn
                 revealTilesButton.disabled = true;
-                setTimeout(() => { revealTilesButton.disabled = false; }, 5000);
+            }
+
+            function updateButtonState() {
+                db.collection('actions')
+                    .where('callNumber', '==', callNumber.toString())
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .onSnapshot(snapshot => {
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            if (data.userId === userId) {
+                                revealTilesButton.disabled = true;
+                            } else {
+                                revealTilesButton.disabled = false;
+                            }
+                        });
+                    });
             }
 
             getFirebaseConfig().then(config => {
@@ -114,7 +132,8 @@
                         userId = user.uid;
                         userName = prompt("Enter your name:");
                         document.getElementById('userName').textContent = `User: ${userName}`;
-                        
+                        updateButtonState();
+
                         revealTilesButton.addEventListener('click', async () => {
                             const tileCount = parseInt(document.getElementById('tileCount').value);
                             if (tileCount > 0 && tileCount <= maxTilesPerRequest) {
