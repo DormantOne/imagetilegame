@@ -17,8 +17,8 @@
         #resultLog {
             margin-top: 20px;
             text-align: left;
-            max-height: 80vh; /* Limit height */
-            overflow-y: auto; /* Enable vertical scroll only when necessary */
+            max-height: 80vh;
+            overflow-y: auto;
             margin: 20px 0;
         }
 
@@ -84,6 +84,7 @@
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         userId = user.uid;
+                        console.log("User signed in anonymously:", userId);
 
                         // Generate QR code for the controller
                         const qrElement = document.getElementById('qrCode');
@@ -96,7 +97,6 @@
                         qrElement.innerHTML = '';
                         qrElement.appendChild(qr.canvas);
 
-                        // Listen for actions in Firestore
                         db.collection('actions').where('callNumber', '==', callNumber)
                             .orderBy('timestamp', 'desc')
                             .onSnapshot(snapshot => {
@@ -119,4 +119,3 @@
     </script>
 </body>
 </html>
- 
