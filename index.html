@@ -74,14 +74,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let db, auth, callNumber, img, blocks = [], blockSize = 50;
-            let userCredits = 200, maxTilesPerRequest = 10;
+            let maxTilesPerRequest = 10;
             const startGameButton = document.getElementById('startGameButton');
             const openGovernorButton = document.getElementById('openGovernorButton');
             const imageUpload = document.getElementById('imageUpload');
             const canvas = document.getElementById('imageCanvas');
             const ctx = canvas.getContext('2d');
             let governorWindow;
-            let userId, currentUserIndex = 0, users = [];
+            let users = [];
+            let currentUserIndex = 0;
             let roomNumber;
 
             function logToHTML(message) {
@@ -223,14 +224,14 @@
 
                 auth.onAuthStateChanged(async user => {
                     if (user) {
-                        userId = user.uid;
+                        const userId = user.uid;
                         logToHTML("User signed in anonymously: " + user.uid);
 
                         // Initialize users with 200 credits if they are new
                         const userRef = db.collection('users').doc(userId);
                         const doc = await userRef.get();
                         if (!doc.exists) {
-                            userName = prompt("Enter your name:");
+                            const userName = prompt("Enter your name:");
                             await userRef.set({ userName, credits: 200, turn: users.length === 0 });
                             users.push({ userId, userName });
                         } else {
