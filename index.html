@@ -207,4 +207,91 @@
                         }
 
                         callNumber = Math.floor(Math.random() * 900000) + 100000;
-                        logToHTML(`Game s
+                        logToHTML(`Game started! Call Number: ${callNumber}`);
+
+                        const qrElement = document.getElementById('qrCode');
+                        const qr = new QRious({
+                            element: qrElement,
+                            size: 200,
+                            value: `https://dormantone.github.io/imagetilegame/controller.html?callNumber=${callNumber}`
+                        });
+
+                        qrElement.innerHTML = '';
+                        qrElement.appendChild(qr.canvas);
+
+                        fetchGameData();
+
+                        setInterval(fetchGameData, 5000);
+
+                        const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
+                        governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
+                    }
+                });
+            });
+
+            openGovernorButton.addEventListener('click', () => {
+                if (!callNumber) {
+                    logToHTML('Start the game first to generate a call number.');
+                    return;
+                }
+                const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
+                if (governorWindow && !governorWindow.closed) {
+                    governorWindow.focus();
+                } else {
+                    governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
+                }
+            });
+
+            async function fetchGameData() {
+                if (!db) {
+                    logToHTML('Database not initialized.');
+                    return;
+                }
+                try {
+                    logToHTML('Fetching game data from Firestore...');
+                    const query = db.collection('actions').where('callNumber', '==', callNumber.toString()).orderBy('timestamp', 'asc');
+                    logToHTML(`Executing query for callNumber: ${callNumber}`);
+                    const snapshot = await query.get();
+                    if (!snapshot.empty) {
+                        logToHTML(`Fetched ${snapshot.size} documents.`);
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            logToHTML(`Document data: ${JSON.stringify(data)}`);
+                            if (data.control === 'revealTiles') {
+                                revealTiles(data.value);
+                                updateCredits(data.userId, -data.value);
+                                switchTurn();
+                            } else if (data.control === 'guess') {
+                                if (data.value === roomNumber) {
+                                    logToHTML(`User ${data.userName} guessed correctly and wins the game!`);
+                                    // End game logic here
+                                } else {
+                                    logToHTML(`User ${data.userName} guessed incorrectly. They lose 40 points.`);
+                                    updateCredits(data.userId, -40);
+                                    switchTurn();
+                                }
+                            }
+                        });
+                    } else {
+                        logToHTML(`No documents found for call number ${callNumber}`);
+                    }
+                } catch (error) {
+                    logToHTML("Error fetching game data: " + error);
+                }
+            }
+
+            function revealTiles(tileCount) {
+                const unplacedBlocks = blocks.filter(block => !block.placed);
+                if (unplacedBlocks.length > 0) {
+                    for (let i = 0; i < tileCount; i++) {
+                        const randomBlock = unplacedBlocks[Math.floor(Math.random() * unplacedBlocks.length)];
+                        randomBlock.placed = true;
+                        blocks = blocks.map(block => block.x === randomBlock.x && block.y === randomBlock.y ? randomBlock : block);
+                    }
+                    drawBlocks();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
