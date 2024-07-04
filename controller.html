@@ -54,7 +54,6 @@
             <label for="tileCount">Tiles to Reveal:</label>
             <input type="number" id="tileCount" min="1" max="10" value="1">
             <button id="revealTilesButton">Reveal</button>
-            <button id="guessButton">Guess</button>
         </div>
     </div>
 
@@ -69,7 +68,6 @@
             let db, auth, callNumber, userId, userName;
             const maxTilesPerRequest = 10; // Define the maxTilesPerRequest variable
             const revealTilesButton = document.getElementById('revealTilesButton');
-            const guessButton = document.getElementById('guessButton');
 
             async function getFirebaseConfig() {
                 const response = await fetch('https://us-central1-imagetilegame.cloudfunctions.net/getFirebaseConfig', {
@@ -100,21 +98,6 @@
                 setTimeout(() => { revealTilesButton.disabled = false; }, 5000);
             }
 
-            async function makeGuess() {
-                const controlData = {
-                    userName,
-                    userId,
-                    callNumber,
-                    control: 'guess',
-                    value: parseInt(prompt("Enter your guess (room number):")),
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-                await db.collection('actions').add(controlData);
-                guessButton.disabled = true;
-                setTimeout(() => { guessButton.disabled = false; }, 5000);
-            }
-
             getFirebaseConfig().then(config => {
                 firebase.initializeApp(config);
                 db = firebase.firestore();
@@ -129,25 +112,14 @@
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         userId = user.uid;
-                        const storedUserName = localStorage.getItem('userName');
-                        if (storedUserName) {
-                            userName = storedUserName;
-                            document.getElementById('userName').textContent = `User: ${userName}`;
-                        } else {
-                            userName = prompt("Enter your name:");
-                            document.getElementById('userName').textContent = `User: ${userName}`;
-                            localStorage.setItem('userName', userName);
-                        }
-
+                        userName = prompt("Enter your name:");
+                        document.getElementById('userName').textContent = `User: ${userName}`;
+                        
                         revealTilesButton.addEventListener('click', async () => {
                             const tileCount = parseInt(document.getElementById('tileCount').value);
                             if (tileCount > 0 && tileCount <= maxTilesPerRequest) {
                                 await revealTiles(tileCount);
                             }
-                        });
-
-                        guessButton.addEventListener('click', async () => {
-                            await makeGuess();
                         });
                     }
                 });
