@@ -34,20 +34,31 @@
 <body>
     <h2>Universal Controller</h2>
     <div id="controller">
-        <p id="userNameDisplay"></p>
+        <p id="userName"></p>
         <p id="callNumberDisplay"></p>
+        <div class="control-container">
+            <label for="choice">Choice:</label>
+            <select id="choice">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+            </select>
+        </div>
         <div class="control-container">
             <label for="tileCount">Tiles to Reveal:</label>
             <input type="number" id="tileCount" min="1" max="10" value="1">
             <button id="revealTilesButton">Reveal</button>
-        </div>
-        <div class="control-container">
-            <label for="guess">Guess Room Number:</label>
-            <input type="text" id="guess">
             <button id="guessButton">Guess</button>
         </div>
     </div>
 
+    <!-- Firebase setup -->
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
@@ -56,7 +67,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let db, auth, callNumber, userId, userName;
-            const maxTilesPerRequest = 10;
+            const maxTilesPerRequest = 10; // Define the maxTilesPerRequest variable
             const revealTilesButton = document.getElementById('revealTilesButton');
             const guessButton = document.getElementById('guessButton');
 
@@ -74,16 +85,7 @@
                 return urlParams.get(param);
             }
 
-            function saveUserName(name) {
-                localStorage.setItem('userName', name);
-            }
-
-            function getUserName() {
-                return localStorage.getItem('userName') || prompt("Enter your name:");
-            }
-
             async function revealTiles(tileCount) {
-                console.log("Revealing tiles: ", tileCount); // Debugging log
                 const controlData = {
                     userName,
                     userId,
@@ -98,39 +100,19 @@
                 setTimeout(() => { revealTilesButton.disabled = false; }, 5000);
             }
 
-            async function makeGuess(guess) {
-                console.log("Making guess: ", guess); // Debugging log
+            async function makeGuess() {
                 const controlData = {
                     userName,
                     userId,
                     callNumber,
                     control: 'guess',
-                    value: letterPairToNumber(guess),
+                    value: parseInt(prompt("Enter your guess (room number):")),
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
                 await db.collection('actions').add(controlData);
                 guessButton.disabled = true;
                 setTimeout(() => { guessButton.disabled = false; }, 5000);
-            }
-
-            function letterPairToNumber(pair) {
-                const letterMapping = {
-                    'AB': 1,
-                    'CD': 2,
-                    'EF': 3,
-                    'GH': 4,
-                    'IJ': 5,
-                    'KL': 6,
-                    'MN': 7,
-                    'OP': 8,
-                    'QR': 9,
-                    'ST': 10,
-                    'UV': 11,
-                    'WX': 12,
-                    'YZ': 13
-                };
-                return letterMapping[pair.toUpperCase()] || 0;
             }
 
             getFirebaseConfig().then(config => {
@@ -147,10 +129,16 @@
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         userId = user.uid;
-                        userName = getUserName();
-                        saveUserName(userName);
-                        document.getElementById('userNameDisplay').textContent = `User: ${userName}`;
-                        
+                        const storedUserName = localStorage.getItem('userName');
+                        if (storedUserName) {
+                            userName = storedUserName;
+                            document.getElementById('userName').textContent = `User: ${userName}`;
+                        } else {
+                            userName = prompt("Enter your name:");
+                            document.getElementById('userName').textContent = `User: ${userName}`;
+                            localStorage.setItem('userName', userName);
+                        }
+
                         revealTilesButton.addEventListener('click', async () => {
                             const tileCount = parseInt(document.getElementById('tileCount').value);
                             if (tileCount > 0 && tileCount <= maxTilesPerRequest) {
@@ -159,8 +147,7 @@
                         });
 
                         guessButton.addEventListener('click', async () => {
-                            const guess = document.getElementById('guess').value;
-                            await makeGuess(guess);
+                            await makeGuess();
                         });
                     }
                 });
