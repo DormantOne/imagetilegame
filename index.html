@@ -38,6 +38,21 @@
             font-size: 1.2em;
             padding: 10px 20px;
         }
+
+        #playerScores {
+            margin-top: 20px;
+            font-size: 1em;
+            text-align: left;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .player-score {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -48,6 +63,7 @@
     <button id="openGovernorButton">Open Governor</button>
     <canvas id="imageCanvas"></canvas>
     <div id="logs"></div>
+    <div id="playerScores"></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
@@ -124,6 +140,21 @@
                 document.getElementById('creditsDisplay').textContent = credits;
             }
 
+            function updatePlayerScores() {
+                const playerScores = document.getElementById('playerScores');
+                playerScores.innerHTML = '';
+                users.forEach(user => {
+                    const userRef = db.collection('users').doc(user.userId);
+                    userRef.get().then(doc => {
+                        const data = doc.data();
+                        const scoreEntry = document.createElement('div');
+                        scoreEntry.className = 'player-score';
+                        scoreEntry.textContent = `${data.userName}: ${data.credits} credits`;
+                        playerScores.appendChild(scoreEntry);
+                    });
+                });
+            }
+
             function switchTurn() {
                 currentUserIndex = (currentUserIndex + 1) % users.length;
                 const currentUser = users[currentUserIndex];
@@ -135,8 +166,7 @@
                 await userRef.update({
                     credits: firebase.firestore.FieldValue.increment(amount)
                 });
-                const doc = await userRef.get();
-                updateCreditsDisplay(doc.data().credits);
+                updatePlayerScores();
             }
 
             function letterPairToNumber(pair) {
@@ -199,11 +229,13 @@
                         const userRef = db.collection('users').doc(userId);
                         const doc = await userRef.get();
                         if (!doc.exists) {
-                            await userRef.set({ credits: 200, turn: users.length === 0 });
-                            users.push({ userId });
+                            userName = prompt("Enter your name:");
+                            await userRef.set({ userName, credits: 200, turn: users.length === 0 });
+                            users.push({ userId, userName });
                         } else {
-                            users.push({ userId });
-                            updateCreditsDisplay(doc.data().credits);
+                            const data = doc.data();
+                            users.push({ userId, userName: data.userName });
+                            updateCreditsDisplay(data.credits);
                         }
 
                         callNumber = Math.floor(Math.random() * 900000) + 100000;
@@ -220,6 +252,7 @@
                         qrElement.appendChild(qr.canvas);
 
                         fetchGameData();
+                        updatePlayerScores();
 
                         setInterval(fetchGameData, 5000);
 
