@@ -83,6 +83,7 @@
             }
 
             async function revealTiles(tileCount) {
+                console.log("Revealing tiles: ", tileCount); // Debugging log
                 const controlData = {
                     userName,
                     userId,
@@ -98,6 +99,7 @@
             }
 
             async function makeGuess(guess) {
+                console.log("Making guess: ", guess); // Debugging log
                 const controlData = {
                     userName,
                     userId,
