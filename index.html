@@ -42,7 +42,7 @@
 </head>
 <body>
     <h2>Image Puzzle Reveal Game</h2>
-    <div>Credits: <span id="creditsDisplay">40</span></div>
+    <div>Credits: <span id="creditsDisplay">200</span></div>
     <input type="file" id="imageUpload" accept="image/*">
     <button id="startGameButton">Start Game</button>
     <button id="openGovernorButton">Open Governor</button>
@@ -58,14 +58,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let db, auth, callNumber, img, blocks = [], blockSize = 50;
-            let userCredits = 40, maxTilesPerRequest = 10;
+            let userCredits = 200, maxTilesPerRequest = 10;
             const startGameButton = document.getElementById('startGameButton');
             const openGovernorButton = document.getElementById('openGovernorButton');
             const imageUpload = document.getElementById('imageUpload');
             const canvas = document.getElementById('imageCanvas');
             const ctx = canvas.getContext('2d');
             let governorWindow;
-            let userId;
+            let userId, currentUserIndex = 0, users = [];
+            let roomNumber;
 
             function logToHTML(message) {
                 const logContainer = document.getElementById('logs');
@@ -123,6 +124,40 @@
                 document.getElementById('creditsDisplay').textContent = credits;
             }
 
+            function switchTurn() {
+                currentUserIndex = (currentUserIndex + 1) % users.length;
+                const currentUser = users[currentUserIndex];
+                logToHTML(`It's now ${currentUser.userName}'s turn.`);
+            }
+
+            async function updateCredits(userId, amount) {
+                const userRef = db.collection('users').doc(userId);
+                await userRef.update({
+                    credits: firebase.firestore.FieldValue.increment(amount)
+                });
+                const doc = await userRef.get();
+                updateCreditsDisplay(doc.data().credits);
+            }
+
+            function letterPairToNumber(pair) {
+                const letterMapping = {
+                    'AB': 1,
+                    'CD': 2,
+                    'EF': 3,
+                    'GH': 4,
+                    'IJ': 5,
+                    'KL': 6,
+                    'MN': 7,
+                    'OP': 8,
+                    'QR': 9,
+                    'ST': 10,
+                    'UV': 11,
+                    'WX': 12,
+                    'YZ': 13
+                };
+                return letterMapping[pair.toUpperCase()] || 0;
+            }
+
             imageUpload.addEventListener('change', function (e) {
                 const reader = new FileReader();
                 reader.onload = function (event) {
@@ -132,6 +167,8 @@
                         prepareCanvas();
                         prepareBlocks();
                     }
+                    const fileName = e.target.files[0].name.split('.')[0]; // Extract file name without extension
+                    roomNumber = letterPairToNumber(fileName);
                     img.src = event.target.result;
                 }
                 reader.readAsDataURL(e.target.files[0]);
@@ -153,94 +190,21 @@
                     logToHTML('Failed to sign in anonymously: ' + error.message);
                 });
 
-                auth.onAuthStateChanged(user => {
+                auth.onAuthStateChanged(async user => {
                     if (user) {
                         userId = user.uid;
                         logToHTML("User signed in anonymously: " + user.uid);
 
-                        // Initialize user with 40 credits if they are new
+                        // Initialize users with 200 credits if they are new
                         const userRef = db.collection('users').doc(userId);
-                        userRef.get().then(doc => {
-                            if (!doc.exists) {
-                                userRef.set({ credits: 40 });
-                            } else {
-                                updateCreditsDisplay(doc.data().credits);
-                            }
-                        });
+                        const doc = await userRef.get();
+                        if (!doc.exists) {
+                            await userRef.set({ credits: 200, turn: users.length === 0 });
+                            users.push({ userId, userName: prompt("Enter your name:") });
+                        } else {
+                            users.push({ userId, userName: prompt("Enter your name:") });
+                            updateCreditsDisplay(doc.data().credits);
+                        }
 
                         callNumber = Math.floor(Math.random() * 900000) + 100000;
-                        logToHTML(`Game started! Call Number: ${callNumber}`);
-
-                        const qrElement = document.getElementById('qrCode');
-                        const qr = new QRious({
-                            element: qrElement,
-                            size: 200,
-                            value: `https://dormantone.github.io/imagetilegame/controller.html?callNumber=${callNumber}`
-                        });
-
-                        fetchGameData();
-                        updateCreditsDisplay(40); // Initial display
-
-                        setInterval(fetchGameData, 5000);
-
-                        const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
-                        governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
-                    }
-                });
-            });
-
-            openGovernorButton.addEventListener('click', () => {
-                if (!callNumber) {
-                    logToHTML('Start the game first to generate a call number.');
-                    return;
-                }
-                const governorUrl = `https://dormantone.github.io/imagetilegame/controller-governor.html?callNumber=${callNumber}`;
-                if (governorWindow && !governorWindow.closed) {
-                    governorWindow.focus();
-                } else {
-                    governorWindow = window.open(governorUrl, '_blank', 'width=400,height=800');
-                }
-            });
-
-            async function fetchGameData() {
-                if (!db) {
-                    logToHTML('Database not initialized.');
-                    return;
-                }
-                try {
-                    logToHTML('Fetching game data from Firestore...');
-                    const query = db.collection('actions').where('callNumber', '==', callNumber.toString()).orderBy('timestamp', 'asc');
-                    logToHTML(`Executing query for callNumber: ${callNumber}`);
-                    const snapshot = await query.get();
-                    if (!snapshot.empty) {
-                        logToHTML(`Fetched ${snapshot.size} documents.`);
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            logToHTML(`Document data: ${JSON.stringify(data)}`);
-                            if (data.control === 'revealTiles') {
-                                revealTiles(data.value);
-                            }
-                        });
-                    } else {
-                        logToHTML(`No documents found for call number ${callNumber}`);
-                    }
-                } catch (error) {
-                    logToHTML("Error fetching game data: " + error);
-                }
-            }
-
-            function revealTiles(tileCount) {
-                const unplacedBlocks = blocks.filter(block => !block.placed);
-                if (unplacedBlocks.length > 0) {
-                    for (let i = 0; i < tileCount; i++) {
-                        const randomBlock = unplacedBlocks[Math.floor(Math.random() * unplacedBlocks.length)];
-                        randomBlock.placed = true;
-                        blocks = blocks.map(block => block.x === randomBlock.x && block.y === randomBlock.y ? randomBlock : block);
-                    }
-                    drawBlocks();
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+                        logToHTML(`Game s
