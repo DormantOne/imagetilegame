@@ -130,7 +130,8 @@
                 auth.onAuthStateChanged(user => {
                     if (user) {
                         userId = user.uid;
-                        userName = prompt("Enter your name:");
+                        userName = localStorage.getItem('userName') || prompt("Enter your name:");
+                        localStorage.setItem('userName', userName);
                         document.getElementById('userName').textContent = `User: ${userName}`;
                         updateButtonState();
 
